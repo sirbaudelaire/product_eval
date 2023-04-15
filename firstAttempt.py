@@ -1,6 +1,9 @@
 import sklearn
 import numpy as np
 import pandas as pd
+import re
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
 
 # Libraries for classical machine learning
 from sklearn.model_selection import train_test_split
@@ -42,28 +45,73 @@ pipe_tvec_nb = Pipeline([
 ])
 
 pipe_tvec_nb.fit(X_train, y_train)
-tvec_nb_pred = pipe_tvec_nb.predict(X_val)
+
+def predict(raw_text: str):
+
+    # Instantiate PorterStemmer
+    p_stemmer = PorterStemmer()
+
+    # Remove HTML
+    #review_text = BeautifulSoup(raw_text, features="lxml").get_text()
+
+    # Remove non-letters
+    letters_only = re.sub("[^a-zA-Z]", " ", raw_text)
+
+    # Convert words to lower case and split each word up
+    words = letters_only.lower().split()
+
+    # Convert stopwords to a set
+    stops = set(stopwords.words('english'))
+
+    # Adding on stopwords that were appearing frequently in both positive and negative reviews
+    stops.update(['app','shopee','shoppee','item','items','seller','sellers','bad'])
+
+    # Remove stopwords
+    meaningful_words = [w for w in words if w not in stops]
+
+    # Stem words
+    meaningful_words = [p_stemmer.stem(w) for w in meaningful_words]
+
+    # Join words back into one string, with a space in between each word
+    final_text = pd.Series(" ".join(meaningful_words))
+
+    # Generate predictions
+    pred = pipe_tvec_nb.predict(final_text)[0]
+
+    if pred == 1:
+        output = "Negative"
+    else:
+        output = "Postive"
+
+    return output
+
+samplestr = 'Ampanget ng quality'
+result = predict(samplestr)
+print(f'RAW_TEXT: {samplestr}')
+print(F'SENTIMENT: {result}')
+
+#tvec_nb_pred = pipe_tvec_nb.predict(X_val)
 
 # Print accuracy scores
-train_score = (pipe_tvec_nb.score(X_train, y_train) * 100) 
-val_score = (pipe_tvec_nb.score(X_val, y_val) * 100)
-print('Training score:', "{:.2f}".format(train_score))
-print('Validation score:', "{:.2f}".format(val_score))
-print('')
+#train_score = (pipe_tvec_nb.score(X_train, y_train) * 100) 
+#val_score = (pipe_tvec_nb.score(X_val, y_val) * 100)
+#print('Training score:', "{:.2f}".format(train_score))
+#print('Validation score:', "{:.2f}".format(val_score))
+#print('')
 
 # Print classification report and confusion matrix
 #cmat(y_val, tvec_nb_pred, 'validation set')
 
 # Read test set into a dataframe
-test = pd.read_csv("C:/Users/acer/Desktop/python_sht/Sentiment-Analysis-for-Shopee/data/clean_test.csv")
+#test = pd.read_csv("C:/Users/acer/Desktop/python_sht/Sentiment-Analysis-for-Shopee/data/clean_test.csv")
 #test = pd.read_csv("C:/Users/acer/Desktop/python_sht/Sentiment-Analysis-for-Shopee/data/shopee_reviews.csv")
 #print(test.head())
-X_test = test['content_stem']
-y_test = test['target']
-test_pred = pipe_tvec_nb.predict(X_test)
+#X_test = test['content_stem']
+#y_test = test['target']
+#test_pred = pipe_tvec_nb.predict(X_test)
 
-test_score = (accuracy_score(y_test, test_pred) * 100)
-print('Evaluation metrics for test set')
-print('')
-print('Accuracy score: ', "{:.2f}".format(test_score))
-print('')
+#test_score = (accuracy_score(y_test, test_pred) * 100)
+#print('Evaluation metrics for test set')
+#print('')
+#print('Accuracy score: ', "{:.2f}".format(test_score))
+#print('')
